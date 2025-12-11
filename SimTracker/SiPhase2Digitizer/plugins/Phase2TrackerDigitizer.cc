@@ -291,6 +291,7 @@ namespace cms {
 
       edm::DetSet<PixelDigi> collector(rawId);
       edm::DetSet<PixelDigiSimLink> linkcollector(rawId);
+      //throw cms::Exception("LogicError") << " I made this!!!!";
       for (auto const& digi_p : digi_map) {
         digitizerUtility::DigiSimInfo info = digi_p.second;
         const auto& ip = PixelDigi::channelToPixel(digi_p.first);

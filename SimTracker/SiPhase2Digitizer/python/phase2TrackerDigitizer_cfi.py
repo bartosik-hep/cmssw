@@ -85,6 +85,14 @@ phase2TrackerDigitizer = cms.PSet(
 #Pixel Digitizer Algorithm
     PixelDigitizerAlgorithm   = PixelDigitizerAlgorithmCommon.clone(
        UseReweighting = cms.bool(False), # will be True for realistic simulations
+       testConfigValue = cms.double(37.),
+       waveformModelEnabled = cms.bool(False),
+       Krummenacher = cms.double(100.),
+       riseTimeSignal = cms.double(10.),
+       phase = cms.double(0.),
+       asynchronous = cms.bool(False),
+       timewindow = cms.double(25.),
+       ToT80 = cms.bool(True)               # ToT counter resolution, default is ToT40
     ),
 #Pixel-3D Digitizer Algorithm
     Pixel3DDigitizerAlgorithm = PixelDigitizerAlgorithmCommon.clone(

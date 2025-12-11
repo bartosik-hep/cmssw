@@ -51,12 +51,28 @@ public:
   bool isAboveThreshold(const digitizerUtility::SimHitInfo* hitInfo, float charge, float thr) const override;
   void add_cross_talk(const Phase2TrackerGeomDetUnit* pixdet) override;
   void module_killing_DB(const Phase2TrackerGeomDetUnit* pixdet) override;
+  void digitize(const Phase2TrackerGeomDetUnit* pixdet, std::map<int, digitizerUtility::DigiSimInfo>& digi_map, const TrackerTopology* tTopo);
+
+  // Waveform Model
+  float CalculateSignalPeak(float charge);
+  std::pair<float, float> crossThresholdTimes(float charge, float thr);
+  int CalculateAssignedBX(float t1, float t2, float corrTime);
+  int convertSignalToADCWaveform(float t1, float t2, float corrTime, int AssignedBX);
 
   // Addition four xtalk-related parameters to PixelDigitizerAlgorithm specific parameters initialized in Phase2TrackerDigitizerAlgorithm
   double odd_row_interchannelCoupling_next_row_;
   double even_row_interchannelCoupling_next_row_;
   double odd_column_interchannelCoupling_next_column_;
   double even_column_interchannelCoupling_next_column_;
+
+  double testConfigValue_;
+  bool waveformModelEnabled_;
+  double Krummenacher_;
+  double riseTimeSignal_; 
+  double phase_; 
+  bool asynchronous_;
+  double timewindow_;
+  bool ToT80_;
 
   // Timewalk parameters
   bool apply_timewalk_;

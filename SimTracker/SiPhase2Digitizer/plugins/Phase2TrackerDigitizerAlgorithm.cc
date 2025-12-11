@@ -961,6 +961,9 @@ void Phase2TrackerDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* p
       module_killing_conf(detID);
   }
 
+  std::ostringstream outputStringTiming;
+  int counter = 0;
+
   // Digitize if the signal is greater than threshold
   for (auto const& s : theSignal) {
     const digitizerUtility::Ph2Amplitude& sig_data = s.second;
@@ -970,7 +973,7 @@ void Phase2TrackerDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* p
     const digitizerUtility::SimHitInfo* hitInfo = nullptr;
     if (!info_list.empty())
       hitInfo = std::max_element(info_list.begin(), info_list.end())->second.get();
-
+    auto time2 = std::chrono::high_resolution_clock::now();
     if (isAboveThreshold(hitInfo, signalInElectrons, theThresholdInE)) {  // check threshold
       digitizerUtility::DigiSimInfo info;
       info.sig_tot = convertSignalToAdc(detID, signalInElectrons, theThresholdInE);  // adc
@@ -983,6 +986,18 @@ void Phase2TrackerDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* p
         }
       }
       digi_map.insert({s.first, info});
+    }
+    auto time3 = std::chrono::high_resolution_clock::now();
+
+
+    auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time3 - time2);
+    
+    outputStringTiming << "ToT converter: " << duration3.count() << std::endl;
+    ++counter;
+    
+    
+    if (counter >= 32) {
+      throw cms::Exception("LogicError") << "I made this!!!! \n" << outputStringTiming.str();
     }
   }
 }
