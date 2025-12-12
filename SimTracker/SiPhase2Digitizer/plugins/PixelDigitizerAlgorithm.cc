@@ -2,6 +2,7 @@
 #include <cmath>
 #include <boost/math/special_functions/lambert_w.hpp>
 #include <sstream>
+#include <fstream>
 
 #include "SimTracker/SiPhase2Digitizer/plugins/PixelDigitizerAlgorithm.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
@@ -394,16 +395,20 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
       module_killing_conf(detID);
   }
 
-  int counter = 0;
-  std::ostringstream outputString;
-  float waveModelThreshold = CalculateSignalPeak(theThresholdInE);
-  outputString << "testConfigValue: " << testConfigValue_ 
+  /* int counter = 0;
+  std::ostringstream outputString; */
+  
+  std::pair<float, float> SignalPeak = CalculateSignalPeak(theThresholdInE);
+  float waveModelThreshold = SignalPeak.first;
+  float t_peak = SignalPeak.second;
+
+  /*outputString << "testConfigValue: " << testConfigValue_ 
                << "\ntheThresholdInE: " << theThresholdInE << " theHIPThresholdInE: " << theHIPThresholdInE << " waveModelThreshold: " << waveModelThreshold
                << "\nConfiguration parameters:\n" << "testConfigValue_ : " << testConfigValue_ << "\nwaveformModelEnabled_: " << waveformModelEnabled_
                << "\nKrummenacher_: " << Krummenacher_ << "\nriseTimeSignal_: " << riseTimeSignal_ << "\nphase_ :" << phase_
                << "\nasynchronous_: " << asynchronous_ << "\ntimewindow_: " << timewindow_ << "\nthePhase2ReadoutMode_: " <<thePhase2ReadoutMode_;
  
-  std::ostringstream outputStringTiming;
+  std::ostringstream outputStringTiming; */
 
   // Digitize if the signal is greater than threshold
   for (auto const& s : theSignal) {
@@ -415,14 +420,35 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
     if (!info_list.empty())
       hitInfo = std::max_element(info_list.begin(), info_list.end())->second.get();
     
-    //bool waveformModelEnabled_ = true; // Placeholder, set to true to indicate not implemented
-    auto start = std::chrono::high_resolution_clock::now();
+    int ChosenBX = 0;
+    if (!CoarseFiltering(signalInElectrons, t_peak, hitInfo -> time(), ChosenBX, theThresholdInE)) {
+      continue;
+    }
+    //auto start = std::chrono::high_resolution_clock::now();
+    /*if (signalInElectrons > 30000) {
+      signalInElectrons = 30000;
+    } 
+    if (signalInElectrons < 1000) {
+      signalInElectrons = 1000;
+    } */
+    
+    /* {std::ofstream outFile("Debug.txt", std::ios::app);
+    outFile << "Signal: " << signalInElectrons;
+    outFile.close();} */
+    
     std::pair<float, float> times = crossThresholdTimes(signalInElectrons, waveModelThreshold);
-    auto time1 = std::chrono::high_resolution_clock::now();
+
+    /* {std::ofstream outFile("Debug.txt", std::ios::app);
+    outFile << ", t1: " << times.first << ", t2: " << times.second;
+    outFile.close();} */
+    //auto time1 = std::chrono::high_resolution_clock::now();
     int AssignedBX = CalculateAssignedBX(times.first, times.second, hitInfo -> time());
-    auto time2 = std::chrono::high_resolution_clock::now();
-    outputString << "  Signal: " << signalInElectrons << " t1: " << times.first << " t2: " << times.second << " hitInfo -> time(): " << hitInfo -> time() << " Assigned BX: " << AssignedBX;
-    if (AssignedBX != -1000) {
+    /* {std::ofstream outFile("Debug.txt", std::ios::app);
+    outFile << ", AssignedBX: " << AssignedBX << std::endl;
+    outFile.close();} */
+    //auto time2 = std::chrono::high_resolution_clock::now();
+    //outputString << "  Signal: " << signalInElectrons << " t1: " << times.first << " t2: " << times.second << " hitInfo -> time(): " << hitInfo -> time() << " Assigned BX: " << AssignedBX;
+    if (AssignedBX == ChosenBX) {
       int ToT = convertSignalToADCWaveform(times.first, times.second, hitInfo -> time(), AssignedBX);
       digitizerUtility::DigiSimInfo info;
       info.sig_tot = ToT;  // adc
@@ -434,22 +460,23 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
             info.simInfoList.push_back({charge_frac, l.second.get()});
         }
       }
-      outputString << ", ToT: " << ToT << "\n";
+      //outputString << ", ToT: " << ToT << "\n";
       digi_map.insert({s.first, info});
-    } else {outputString << "\n";}
-    auto time3 = std::chrono::high_resolution_clock::now();
+    } //else {outputString << "\n";}
+    //throw cms::Exception("LogicError") << "This is the new version";
+    /*auto time3 = std::chrono::high_resolution_clock::now();
 
     auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time1 - start);
     auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(time2 - time1);
     auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time3 - time2);
     
-    outputStringTiming << "crossThresholdTimes: " << duration1.count() << " CalculateAssignedBX: " << duration2.count() << " ToT converter: " << duration3.count() << std::endl;
-    ++counter;
+    outputStringTiming << "crossThresholdTimes: " << duration1.count() << " CalculateAssignedBX: " << duration2.count() << " ToT converter: " << duration3.count() << std::endl;*/
+   /*  ++counter;
     
     
     if (counter >= 32) {
-      throw cms::Exception("LogicError") << "I made this!!!! \n" << outputStringTiming.str();
-    }
+      throw cms::Exception("LogicError") << "I made this!!!! \n" << outputString.str();
+    } */
   }
 }
 
@@ -467,10 +494,10 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
 
 
 // Signal peak
-float PixelDigitizerAlgorithm::CalculateSignalPeak(float charge) {
+std::pair<float, float> PixelDigitizerAlgorithm::CalculateSignalPeak(float charge) {
     float t_peak = riseTimeSignal_ * log(2 * charge / (Krummenacher_ * riseTimeSignal_));
     float S_peak = charge * (1.0 - exp(- t_peak / riseTimeSignal_)) - 0.5 * Krummenacher_ * t_peak;
-    return S_peak;
+    return {S_peak, t_peak};
 }
 
 // Calculate the times the signal crosses the threshold
@@ -478,38 +505,38 @@ std::pair<float, float> PixelDigitizerAlgorithm::crossThresholdTimes(float charg
     float t1 = std::numeric_limits<float>::quiet_NaN();
     float t2 = std::numeric_limits<float>::quiet_NaN();
 
-    float B = 0.5 * Krummenacher_;
-    float A = charge - thr;
+    double B = 0.5 * Krummenacher_;
+    double A = charge - thr;
     //float denom = A * tau;
 
-    float S_peak = CalculateSignalPeak(charge);
-    if (thr > S_peak) {
-        // never reaches threshold
-        return {t1, t2};  
-    }
+    //double S_peak = CalculateSignalPeak(charge);
+    //if (thr > S_peak) {
+    //    // never reaches threshold
+    //    return {t1, t2};  
+    //}
 
-    float z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
+    double z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
 
     // Using Lambert W function to solve for times
     // Try 0 branch
-    try {
-        float w0 = boost::math::lambert_w0(z);
+    //try {
+        double w0 = boost::math::lambert_w0(z);
         if (std::isfinite(w0) && A / B + riseTimeSignal_ * w0 > 0) {
-            t1 = A / B + riseTimeSignal_ * w0;
+            t2 = A / B + riseTimeSignal_ * w0;
         }
-    } catch (const std::exception &e) {
+    /* } catch (const std::exception &e) {
         // leave t1 as NaN
-    }
+    }  */
 
     // Try -1 branch
-    try {
-        float w1 = boost::math::lambert_wm1(z);
+    //try {
+        double w1 = boost::math::lambert_wm1(z);
         if (std::isfinite(w1) && A / B + riseTimeSignal_ * w1 > 0) {
-            t2 = A / B + riseTimeSignal_ * w1;
+            t1 = A / B + riseTimeSignal_ * w1;
         }
-    } catch (const std::exception &e) {
+    /* } catch (const std::exception &e) {
         // leave t2 as NaN
-    }
+    }  */
 
     // Order results so t1 is the smaller (rising) and t2 the larger (falling)
     if (std::isfinite(t1) && std::isfinite(t2) && t1 > t2) {
@@ -520,6 +547,10 @@ std::pair<float, float> PixelDigitizerAlgorithm::crossThresholdTimes(float charg
 
 // Calculate the assigned BX based on threshold crossing times
 int PixelDigitizerAlgorithm::CalculateAssignedBX(float t1, float t2, float corrTime) {
+    if (!std::isfinite(t1) || !std::isfinite(t2)) {
+        //throw cms::Exception("LogicError") << "This is the new version \n t1: " << t1 << ", t2: " << t2;
+        return -1000; 
+    }
     int AssignedBX = std::floor((t1 + corrTime - phase_) / timewindow_);
     if (asynchronous_) {
         return AssignedBX;
@@ -554,3 +585,8 @@ int PixelDigitizerAlgorithm::convertSignalToADCWaveform(float t1, float t2, floa
     signal_in_adc = std::min(temp_signal, theAdcFullScale_);
     return signal_in_adc;
 }   
+
+
+bool PixelDigitizerAlgorithm::CoarseFiltering(float signalInElectrons, float t_peak, float corrTime, int ChosenBX, float thresholdINElectrons) {
+    return (corrTime + t_peak > ChosenBX * timewindow_ + phase_) && (corrTime < (ChosenBX + 1) * timewindow_ + phase_) && signalInElectrons >= thresholdINElectrons;
+} 

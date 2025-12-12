@@ -54,10 +54,11 @@ public:
   void digitize(const Phase2TrackerGeomDetUnit* pixdet, std::map<int, digitizerUtility::DigiSimInfo>& digi_map, const TrackerTopology* tTopo);
 
   // Waveform Model
-  float CalculateSignalPeak(float charge);
+  std::pair<float, float> CalculateSignalPeak(float charge);
   std::pair<float, float> crossThresholdTimes(float charge, float thr);
   int CalculateAssignedBX(float t1, float t2, float corrTime);
   int convertSignalToADCWaveform(float t1, float t2, float corrTime, int AssignedBX);
+  bool CoarseFiltering(float signalInElectrons, float t_peak, float corrTime, int ChosenBX, float thresholdINElectrons);
 
   // Addition four xtalk-related parameters to PixelDigitizerAlgorithm specific parameters initialized in Phase2TrackerDigitizerAlgorithm
   double odd_row_interchannelCoupling_next_row_;

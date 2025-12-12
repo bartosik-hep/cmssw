@@ -92,7 +92,7 @@ phase2TrackerDigitizer = cms.PSet(
        phase = cms.double(0.),
        asynchronous = cms.bool(False),
        timewindow = cms.double(25.),
-       ToT80 = cms.bool(True)               # ToT counter resolution, default is ToT40
+       ToT80 = cms.bool(False)               # ToT counter resolution, default is ToT40
     ),
 #Pixel-3D Digitizer Algorithm
     Pixel3DDigitizerAlgorithm = PixelDigitizerAlgorithmCommon.clone(
