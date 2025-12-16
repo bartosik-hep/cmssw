@@ -63,7 +63,6 @@ PixelDigitizerAlgorithm::PixelDigitizerAlgorithm(const edm::ParameterSet& conf, 
       fedCablingMapToken_(iC.esConsumes()),
       geomToken_(iC.esConsumes()) {
       // Waveform configuration
-      testConfigValue_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("testConfigValue") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<double>("testConfigValue") : 0.0;
       waveformModelEnabled_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("waveformModelEnabled") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<bool>("waveformModelEnabled") : false;
       Krummenacher_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("Krummenacher") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<double>("Krummenacher") : 0.0;
       riseTimeSignal_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("riseTimeSignal") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<double>("riseTimeSignal") : 0.0;
@@ -71,6 +70,7 @@ PixelDigitizerAlgorithm::PixelDigitizerAlgorithm(const edm::ParameterSet& conf, 
       asynchronous_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("asynchronous") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<bool>("asynchronous") : false;
       timewindow_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("timewindow") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<double>("timewindow") : 42;
       ToT80_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("ToT80") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<bool>("ToT80") : false;
+      ChosenBX_ = conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").exists("ChosenBX") ? conf.getParameter<ParameterSet>("PixelDigitizerAlgorithm").getParameter<int>("ChosenBX") : 0;
   if (use_deadmodule_DB_)
     siPixelBadModuleToken_ = iC.esConsumes();
   if (use_LorentzAngle_DB_)
@@ -353,7 +353,7 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
   float theThresholdInE = 0.;
   float theHIPThresholdInE = 0.;
   // Define Threshold
-  /*if (Sub_detid == PixelSubdetector::PixelBarrel || Sub_detid == StripSubdetector::TOB) {  // Barrel modules
+  /* if (Sub_detid == PixelSubdetector::PixelBarrel || Sub_detid == StripSubdetector::TOB) {  // Barrel modules
     theThresholdInE = addThresholdSmearing_ ? smearedThreshold_Barrel_->fire()             // gaussian smearing
                                             : theThresholdInE_Barrel_;                     // no smearing
     theHIPThresholdInE = theHIPThresholdInE_Barrel_;
@@ -361,14 +361,14 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
     theThresholdInE = addThresholdSmearing_ ? smearedThreshold_Endcap_->fire()  // gaussian smearing
                                             : theThresholdInE_Endcap_;          // no smearing
     theHIPThresholdInE = theHIPThresholdInE_Endcap_;
-  }*/
+  } */
 
   if (Sub_detid == PixelSubdetector::PixelBarrel ) { // || Sub_detid == StripSubdetector::TOB) {
     theThresholdInE = theThresholdInE_Barrel_;
   } else {
     theThresholdInE = theThresholdInE_Endcap_;
   }
-
+ 
   //  if (addNoise) add_noise(pixdet, theThresholdInE/theNoiseInElectrons_);  // generate noise
   if (addNoise_)
     add_noise(pixdet);  // generate noise
@@ -402,13 +402,11 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
   float waveModelThreshold = SignalPeak.first;
   float t_peak = SignalPeak.second;
 
-  /*outputString << "testConfigValue: " << testConfigValue_ 
-               << "\ntheThresholdInE: " << theThresholdInE << " theHIPThresholdInE: " << theHIPThresholdInE << " waveModelThreshold: " << waveModelThreshold
-               << "\nConfiguration parameters:\n" << "testConfigValue_ : " << testConfigValue_ << "\nwaveformModelEnabled_: " << waveformModelEnabled_
+  /* outputString << "     Configuration parameters:\n" << "waveformModelEnabled_: " << waveformModelEnabled_
                << "\nKrummenacher_: " << Krummenacher_ << "\nriseTimeSignal_: " << riseTimeSignal_ << "\nphase_ :" << phase_
-               << "\nasynchronous_: " << asynchronous_ << "\ntimewindow_: " << timewindow_ << "\nthePhase2ReadoutMode_: " <<thePhase2ReadoutMode_;
+               << "\nasynchronous_: " << asynchronous_ << "\ntimewindow_: " << timewindow_ << "\nthePhase2ReadoutMode_: " <<thePhase2ReadoutMode_; */
  
-  std::ostringstream outputStringTiming; */
+  //std::ostringstream outputStringTiming;
 
   // Digitize if the signal is greater than threshold
   for (auto const& s : theSignal) {
@@ -420,35 +418,16 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
     if (!info_list.empty())
       hitInfo = std::max_element(info_list.begin(), info_list.end())->second.get();
     
-    int ChosenBX = 0;
-    if (!CoarseFiltering(signalInElectrons, t_peak, hitInfo -> time(), ChosenBX, theThresholdInE)) {
+    if (!CoarseFiltering(signalInElectrons, t_peak, hitInfo -> time(), ChosenBX_, theThresholdInE)) {
       continue;
     }
     //auto start = std::chrono::high_resolution_clock::now();
-    /*if (signalInElectrons > 30000) {
-      signalInElectrons = 30000;
-    } 
-    if (signalInElectrons < 1000) {
-      signalInElectrons = 1000;
-    } */
-    
-    /* {std::ofstream outFile("Debug.txt", std::ios::app);
-    outFile << "Signal: " << signalInElectrons;
-    outFile.close();} */
-    
     std::pair<float, float> times = crossThresholdTimes(signalInElectrons, waveModelThreshold);
-
-    /* {std::ofstream outFile("Debug.txt", std::ios::app);
-    outFile << ", t1: " << times.first << ", t2: " << times.second;
-    outFile.close();} */
     //auto time1 = std::chrono::high_resolution_clock::now();
-    int AssignedBX = CalculateAssignedBX(times.first, times.second, hitInfo -> time());
-    /* {std::ofstream outFile("Debug.txt", std::ios::app);
-    outFile << ", AssignedBX: " << AssignedBX << std::endl;
-    outFile.close();} */
+    int AssignedBX = CalculateAssignedBX(times.first, times.second, hitInfo -> time(), signalInElectrons);
     //auto time2 = std::chrono::high_resolution_clock::now();
     //outputString << "  Signal: " << signalInElectrons << " t1: " << times.first << " t2: " << times.second << " hitInfo -> time(): " << hitInfo -> time() << " Assigned BX: " << AssignedBX;
-    if (AssignedBX == ChosenBX) {
+    if (AssignedBX == ChosenBX_) {
       int ToT = convertSignalToADCWaveform(times.first, times.second, hitInfo -> time(), AssignedBX);
       digitizerUtility::DigiSimInfo info;
       info.sig_tot = ToT;  // adc
@@ -471,29 +450,34 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
     auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time3 - time2);
     
     outputStringTiming << "crossThresholdTimes: " << duration1.count() << " CalculateAssignedBX: " << duration2.count() << " ToT converter: " << duration3.count() << std::endl;*/
-   /*  ++counter;
-    
-    
+    /* ++counter;
     if (counter >= 32) {
       throw cms::Exception("LogicError") << "I made this!!!! \n" << outputString.str();
     } */
   }
+  /* std::ofstream outFile("DebugHits.txt", std::ios::app);
+  outFile << outputString.str();
+  outFile.close(); */
 }
 
 
 // =========================== Waveform model =========================================
 // Assumes the signal for a CROC can be approximated to this signal: 
-//            S(t, Q) = Q(1 - exp{-t/tau}) - I_k / 2 t, 
+//            S(t, Q) = Q(1 - exp{-t/tau}) - (I_k / 2) t, 
 // Where tau is the rise time and I_k is the krummenacher current.
 // By finding the times the signal crosses the threshold, the signal is converted into ToT
-// Important values:
-//    Phase                : The relation between corrTime and sampling edge
+// To activate this model "waveformModelEnabled" must be set to True in the python configuration
+// Important parameters:
+//    Krummenacher Current : The current used for discharging the signal
 //    Rise time            : The rise time of the signal
-//    Krummenacher Current : The current use for discharging the signal
+//    Phase                : The relation between corrTime and sampling edge
 //    Async or sync        : All signals above threshold is seen in async mode, just the signals that are above threshold on a sampling edge is seen in Sync mode
+//    Time window          : The lenght of time window in ns
+//    ToT 80               : If enabled, counts ToT with twice the precision on the falling edge
+//    Chosen BX            : Decides which assigned BX that should be digitized and saved to file.
 
 
-// Signal peak
+// Signal peak, used for finding the waveform threshold and maximum timewalk
 std::pair<float, float> PixelDigitizerAlgorithm::CalculateSignalPeak(float charge) {
     float t_peak = riseTimeSignal_ * log(2 * charge / (Krummenacher_ * riseTimeSignal_));
     float S_peak = charge * (1.0 - exp(- t_peak / riseTimeSignal_)) - 0.5 * Krummenacher_ * t_peak;
@@ -505,52 +489,32 @@ std::pair<float, float> PixelDigitizerAlgorithm::crossThresholdTimes(float charg
     float t1 = std::numeric_limits<float>::quiet_NaN();
     float t2 = std::numeric_limits<float>::quiet_NaN();
 
-    double B = 0.5 * Krummenacher_;
-    double A = charge - thr;
-    //float denom = A * tau;
+    long double B = 0.5 * Krummenacher_;
+    long double A = charge - thr;
 
-    //double S_peak = CalculateSignalPeak(charge);
-    //if (thr > S_peak) {
-    //    // never reaches threshold
-    //    return {t1, t2};  
-    //}
-
-    double z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
+    long double z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
 
     // Using Lambert W function to solve for times
-    // Try 0 branch
-    //try {
-        double w0 = boost::math::lambert_w0(z);
-        if (std::isfinite(w0) && A / B + riseTimeSignal_ * w0 > 0) {
-            t2 = A / B + riseTimeSignal_ * w0;
-        }
-    /* } catch (const std::exception &e) {
-        // leave t1 as NaN
-    }  */
+    // W_0 branch, falling edge
+    long double w0 = boost::math::lambert_w0(z);
+    if (std::isfinite(w0) && A / B + riseTimeSignal_ * w0 > 0) {
+        t2 = A / B + riseTimeSignal_ * w0;
+    }
 
-    // Try -1 branch
-    //try {
-        double w1 = boost::math::lambert_wm1(z);
-        if (std::isfinite(w1) && A / B + riseTimeSignal_ * w1 > 0) {
-            t1 = A / B + riseTimeSignal_ * w1;
-        }
-    /* } catch (const std::exception &e) {
-        // leave t2 as NaN
-    }  */
-
-    // Order results so t1 is the smaller (rising) and t2 the larger (falling)
-    if (std::isfinite(t1) && std::isfinite(t2) && t1 > t2) {
-        std::swap(t1, t2);
+    // W_-1 branch, rising edge
+    if (charge > B * riseTimeSignal_ * 11000) {  // If too high charge, we use an approximation (11000 is found be testing)
+      t1 = - riseTimeSignal_ * log(1 - thr / charge);
+    } else {
+      long double w1 = boost::math::lambert_wm1(z);
+      if (std::isfinite(w1) && A / B + riseTimeSignal_ * w1 > 0) {
+          t1 = A / B + riseTimeSignal_ * w1;
+      }
     }
     return {t1, t2};
 }
 
 // Calculate the assigned BX based on threshold crossing times
-int PixelDigitizerAlgorithm::CalculateAssignedBX(float t1, float t2, float corrTime) {
-    if (!std::isfinite(t1) || !std::isfinite(t2)) {
-        //throw cms::Exception("LogicError") << "This is the new version \n t1: " << t1 << ", t2: " << t2;
-        return -1000; 
-    }
+int PixelDigitizerAlgorithm::CalculateAssignedBX(float t1, float t2, float corrTime, float charge) {
     int AssignedBX = std::floor((t1 + corrTime - phase_) / timewindow_);
     if (asynchronous_) {
         return AssignedBX;
@@ -588,5 +552,8 @@ int PixelDigitizerAlgorithm::convertSignalToADCWaveform(float t1, float t2, floa
 
 
 bool PixelDigitizerAlgorithm::CoarseFiltering(float signalInElectrons, float t_peak, float corrTime, int ChosenBX, float thresholdINElectrons) {
+    // A coarse filtering to avoid the computation of crossing times.
+    // Check if the signal is inside the chosen BX with maximum timewalk and with no timewalk
+    // Check if the signal is above the threshold
     return (corrTime + t_peak > ChosenBX * timewindow_ + phase_) && (corrTime < (ChosenBX + 1) * timewindow_ + phase_) && signalInElectrons >= thresholdINElectrons;
 } 

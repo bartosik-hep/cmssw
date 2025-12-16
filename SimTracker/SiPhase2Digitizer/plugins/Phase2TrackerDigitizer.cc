@@ -276,9 +276,9 @@ namespace cms {
                                                   const bool ot_analog) {
     std::vector<edm::DetSet<PixelDigi> > digiVector;
     std::vector<edm::DetSet<PixelDigiSimLink> > digiLinkVector;
-    int length = 1;
+    /* int length = 1;
     std::vector<int> times(length, 0);
-    int counter = 0;                              
+    int counter = 0;   */                   
     for (auto const& det_u : pDD_->detUnits()) {
       uint32_t rawId = det_u->geographicalId().rawId();
       auto algotype = getAlgoType(rawId);
@@ -291,19 +291,19 @@ namespace cms {
         continue;
 
       std::map<int, digitizerUtility::DigiSimInfo> digi_map;
-      auto start = std::chrono::high_resolution_clock::now();
+      //auto start = std::chrono::high_resolution_clock::now();
       fiter->second->digitize(dynamic_cast<const Phase2TrackerGeomDetUnit*>(det_u), digi_map, tTopo_);
-      auto stop = std::chrono::high_resolution_clock::now();
+      /* auto stop = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
       times[counter] = int(duration.count());
-      counter++;
+      counter++; 
       if (counter == length) {
         std::ofstream outFile("Times.txt", std::ios::app);
         for (int time : times)
           outFile << time << "\n";
         outFile.close();
         counter = 0;
-      }  
+      }  */
       edm::DetSet<PixelDigi> collector(rawId);
       edm::DetSet<PixelDigiSimLink> linkcollector(rawId);
       //throw cms::Exception("LogicError") << " I made this!!!!";
