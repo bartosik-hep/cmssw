@@ -336,8 +336,6 @@ void PixelDigitizerAlgorithm::module_killing_DB(const Phase2TrackerGeomDetUnit* 
 void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
                                       std::map<int, digitizerUtility::DigiSimInfo>& digi_map,
                                       const TrackerTopology* tTopo) {
-  //bool waveformModelEnabled_ = false;
-  //throw cms::Exception("LogicError") << "I made this!!!! \n";
   if (!waveformModelEnabled_) {
      return Phase2TrackerDigitizerAlgorithm::digitize(pixdet, digi_map, tTopo);
   }
@@ -395,20 +393,10 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
       module_killing_conf(detID);
   }
 
-  /* int counter = 0;
-  std::ostringstream outputString; */
-  
   std::pair<float, float> SignalPeak = CalculateSignalPeak(theThresholdInE);
   float waveModelThreshold = SignalPeak.first;
   float t_peak = SignalPeak.second;
 
-  /* outputString << "     Configuration parameters:\n" << "waveformModelEnabled_: " << waveformModelEnabled_
-               << "\nKrummenacher_: " << Krummenacher_ << "\nriseTimeSignal_: " << riseTimeSignal_ << "\nphase_ :" << phase_
-               << "\nasynchronous_: " << asynchronous_ << "\ntimewindow_: " << timewindow_ << "\nthePhase2ReadoutMode_: " <<thePhase2ReadoutMode_; */
- 
-  //std::ostringstream outputStringTiming;
-
-  // Digitize if the signal is greater than threshold
   for (auto const& s : theSignal) {
     const digitizerUtility::Ph2Amplitude& sig_data = s.second;
     float signalInElectrons = sig_data.ampl();
@@ -421,12 +409,8 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
     if (!CoarseFiltering(signalInElectrons, t_peak, hitInfo -> time(), ChosenBX_, theThresholdInE)) {
       continue;
     }
-    //auto start = std::chrono::high_resolution_clock::now();
     std::pair<float, float> times = crossThresholdTimes(signalInElectrons, waveModelThreshold);
-    //auto time1 = std::chrono::high_resolution_clock::now();
     int AssignedBX = CalculateAssignedBX(times.first, times.second, hitInfo -> time(), signalInElectrons);
-    //auto time2 = std::chrono::high_resolution_clock::now();
-    //outputString << "  Signal: " << signalInElectrons << " t1: " << times.first << " t2: " << times.second << " hitInfo -> time(): " << hitInfo -> time() << " Assigned BX: " << AssignedBX;
     if (AssignedBX == ChosenBX_) {
       int ToT = convertSignalToADCWaveform(times.first, times.second, hitInfo -> time(), AssignedBX);
       digitizerUtility::DigiSimInfo info;
@@ -439,25 +423,9 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
             info.simInfoList.push_back({charge_frac, l.second.get()});
         }
       }
-      //outputString << ", ToT: " << ToT << "\n";
       digi_map.insert({s.first, info});
-    } //else {outputString << "\n";}
-    //throw cms::Exception("LogicError") << "This is the new version";
-    /*auto time3 = std::chrono::high_resolution_clock::now();
-
-    auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time1 - start);
-    auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(time2 - time1);
-    auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time3 - time2);
-    
-    outputStringTiming << "crossThresholdTimes: " << duration1.count() << " CalculateAssignedBX: " << duration2.count() << " ToT converter: " << duration3.count() << std::endl;*/
-    /* ++counter;
-    if (counter >= 32) {
-      throw cms::Exception("LogicError") << "I made this!!!! \n" << outputString.str();
-    } */
+    } 
   }
-  /* std::ofstream outFile("DebugHits.txt", std::ios::app);
-  outFile << outputString.str();
-  outFile.close(); */
 }
 
 
@@ -489,23 +457,23 @@ std::pair<float, float> PixelDigitizerAlgorithm::crossThresholdTimes(float charg
     float t1 = std::numeric_limits<float>::quiet_NaN();
     float t2 = std::numeric_limits<float>::quiet_NaN();
 
-    long double B = 0.5 * Krummenacher_;
-    long double A = charge - thr;
+    double B = 0.5 * Krummenacher_;
+    double A = charge - thr;
 
-    long double z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
+    double z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
 
     // Using Lambert W function to solve for times
     // W_0 branch, falling edge
-    long double w0 = boost::math::lambert_w0(z);
+    double w0 = boost::math::lambert_w0(z);
     if (std::isfinite(w0) && A / B + riseTimeSignal_ * w0 > 0) {
         t2 = A / B + riseTimeSignal_ * w0;
     }
 
     // W_-1 branch, rising edge
-    if (charge > B * riseTimeSignal_ * 11000) {  // If too high charge, we use an approximation (11000 is found be testing)
+    if (charge > B * riseTimeSignal_ * 800) {  // If too high charge, we use an approximation (11000 is found be testing)
       t1 = - riseTimeSignal_ * log(1 - thr / charge);
     } else {
-      long double w1 = boost::math::lambert_wm1(z);
+      double w1 = boost::math::lambert_wm1(z);
       if (std::isfinite(w1) && A / B + riseTimeSignal_ * w1 > 0) {
           t1 = A / B + riseTimeSignal_ * w1;
       }
