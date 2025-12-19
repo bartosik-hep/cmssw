@@ -94,7 +94,16 @@ PixelDigitizerAlgorithm::~PixelDigitizerAlgorithm() { LogDebug("PixelDigitizerAl
 bool PixelDigitizerAlgorithm::select_hit(const PSimHit& hit, double tCorr, double& sigScale) const {
   // in case of signal-shape emulation do not apply [TofLower,TofUpper] selection
   double toa = hit.tof() - tCorr;
-  return apply_timewalk_ || (toa >= theTofLowerCut_ && toa < theTofUpperCut_);
+
+  if (waveformModelEnabled_) {
+    float threshold = theThresholdInE_Endcap_;
+    float tmax = riseTimeSignal_ * log(2 * threshold / (Krummenacher_ * riseTimeSignal_));
+    return (tmax + toa > ChosenBX_ * timewindow_ + phase_) && (toa < (ChosenBX_ + 1) * timewindow_ + phase_);
+  } else if (apply_timewalk_) {
+    return true;
+  } else {
+    return (toa >= theTofLowerCut_ && toa < theTofUpperCut_);
+  }
 }
 
 // ======================================================================
@@ -503,7 +512,6 @@ int PixelDigitizerAlgorithm::convertSignalToADCWaveform(float t1, float t2, floa
       float denom = ToT80_ ? (timewindow_ / 2.0) : timewindow_;
       float samplingTime = (AssignedBX + 1) * timewindow_ + phase_;
       temp_signal = std::floor((t2 + corrTime - samplingTime) / denom);
-      //throw cms::Exception("LogicError") << "I made this!!!! \n" << "Sampling Edge: " << samplingTime << " t2: " << t2 << " corrTime: " << corrTime << " denom: " << denom;
       if (thePhase2ReadoutMode_ != - 1) {
         // calculate the kink point and the slope
         int dualslope_param = std::min(std::abs(thePhase2ReadoutMode_), max_limit);
@@ -523,5 +531,5 @@ bool PixelDigitizerAlgorithm::CoarseFiltering(float signalInElectrons, float t_p
     // A coarse filtering to avoid the computation of crossing times.
     // Check if the signal is inside the chosen BX with maximum timewalk and with no timewalk
     // Check if the signal is above the threshold
-    return (corrTime + t_peak > ChosenBX * timewindow_ + phase_) && (corrTime < (ChosenBX + 1) * timewindow_ + phase_) && signalInElectrons >= thresholdINElectrons;
+    return (corrTime + t_peak > ChosenBX * timewindow_ + phase_) && (corrTime < (ChosenBX + 1) * timewindow_ + phase_) && (signalInElectrons >= thresholdINElectrons);
 } 
