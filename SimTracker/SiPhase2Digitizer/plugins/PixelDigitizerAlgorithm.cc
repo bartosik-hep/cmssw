@@ -348,6 +348,7 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
   if (!waveformModelEnabled_) {
      return Phase2TrackerDigitizerAlgorithm::digitize(pixdet, digi_map, tTopo);
   }
+  //throw cms::Exception("LogicError") << " I made this!!!!";
   uint32_t detID = pixdet->geographicalId().rawId();
   auto it = _signal.find(detID);
   if (it == _signal.end())
@@ -414,14 +415,15 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
     const digitizerUtility::SimHitInfo* hitInfo = nullptr;
     if (!info_list.empty())
       hitInfo = std::max_element(info_list.begin(), info_list.end())->second.get();
-    
-    if (!CoarseFiltering(signalInElectrons, t_peak, hitInfo -> time(), ChosenBX_, theThresholdInE)) {
+    if (info_list.empty())
+      continue;
+    if (!CoarseFiltering(signalInElectrons, t_peak, hitInfo->time(), ChosenBX_, theThresholdInE)) {
       continue;
     }
     std::pair<float, float> times = crossThresholdTimes(signalInElectrons, waveModelThreshold);
-    int AssignedBX = CalculateAssignedBX(times.first, times.second, hitInfo -> time(), signalInElectrons);
+    int AssignedBX = CalculateAssignedBX(times.first, times.second, hitInfo->time(), signalInElectrons);
     if (AssignedBX == ChosenBX_) {
-      int ToT = convertSignalToADCWaveform(times.first, times.second, hitInfo -> time(), AssignedBX);
+      int ToT = convertSignalToADCWaveform(times.first, times.second, hitInfo->time(), AssignedBX);
       digitizerUtility::DigiSimInfo info;
       info.sig_tot = ToT;  // adc
       info.ot_bit = signalInElectrons > theHIPThresholdInE ? true : false;
@@ -449,7 +451,7 @@ void PixelDigitizerAlgorithm::digitize(const Phase2TrackerGeomDetUnit* pixdet,
 //    Rise time            : The rise time of the signal
 //    Phase                : The relation between corrTime and sampling edge
 //    Async or sync        : All signals above threshold is seen in async mode, just the signals that are above threshold on a sampling edge is seen in Sync mode
-//    Time window          : The lenght of time window in ns
+//    Time window          : The length of time window in ns
 //    ToT 80               : If enabled, counts ToT with twice the precision on the falling edge
 //    Chosen BX            : Decides which assigned BX that should be digitized and saved to file.
 
@@ -470,6 +472,11 @@ std::pair<float, float> PixelDigitizerAlgorithm::crossThresholdTimes(float charg
     double A = charge - thr;
 
     double z = - (charge / (B * riseTimeSignal_)) * std::exp(-A / (B * riseTimeSignal_));
+    double edge = - 1 / std::exp(1);
+
+    if (z <= edge) {
+      return {t1, t2};
+    }
 
     // Using Lambert W function to solve for times
     // W_0 branch, falling edge
