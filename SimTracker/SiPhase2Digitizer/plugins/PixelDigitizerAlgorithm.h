@@ -40,6 +40,54 @@ private:
     std::vector<TimewalkCurve> curves;
   };
 
+  // Holds the waveform parameters
+  class WaveformModel {
+  public:
+    WaveformModel(const edm::ParameterSet& pset);
+
+    struct SignalPeak {
+        float amplitude;
+        float time;
+    };
+
+    struct EffectiveParams {
+        double krumm;
+        double risetime;
+      };
+
+    EffectiveParams computeEffectiveParams(float charge, double sampledKrummenacher) const;
+
+    SignalPeak calculateSignalPeak(float charge, EffectiveParams p) const;
+    std::pair<double, double> crossThresholdTimes(float charge, float thr, EffectiveParams p) const;
+    int calculateAssignedBX(float t1, float t2, float corrTime, float charge) const;
+    int convertSignalToADCWaveform(float t1, float t2, float corrTime, int AssignedBX, int theAdcFullScale, int thePhase2ReadoutMode) const;
+    bool coarseTimeFiltering(float t_peak, float corrTime) const;
+
+    int chosenBX_;
+
+    double nominalKrummenacher_;
+    bool addKrummSmearing_;
+    double krummSmearing_;
+
+
+  private:
+    double krummSatCharge_;
+    double krummChargeOffset_;
+
+    double riseTimeSignal_;
+    double riseTimeOffset_;
+    double riseTimeSlope_;
+
+    double timeOffset_;
+    double groundOffset_;
+    double signalOffset_;
+
+    double phase_; 
+    bool asynchronous_;
+    double timewindow_;
+    bool tot80_;
+  };
+
 public:
   PixelDigitizerAlgorithm(const edm::ParameterSet& conf, edm::ConsumesCollector iC);
   ~PixelDigitizerAlgorithm() override;
@@ -51,12 +99,17 @@ public:
   bool isAboveThreshold(const digitizerUtility::SimHitInfo* hitInfo, float charge, float thr) const override;
   void add_cross_talk(const Phase2TrackerGeomDetUnit* pixdet) override;
   void module_killing_DB(const Phase2TrackerGeomDetUnit* pixdet) override;
+  void digitize(const Phase2TrackerGeomDetUnit* pixdet, std::map<int, digitizerUtility::DigiSimInfo>& digi_map, const TrackerTopology* tTopo) override;
 
   // Addition four xtalk-related parameters to PixelDigitizerAlgorithm specific parameters initialized in Phase2TrackerDigitizerAlgorithm
   double odd_row_interchannelCoupling_next_row_;
   double even_row_interchannelCoupling_next_row_;
   double odd_column_interchannelCoupling_next_column_;
   double even_column_interchannelCoupling_next_column_;
+
+  // Waveform parameteres
+  bool waveformModelEnabled_;
+  const WaveformModel WaveformModel_;
 
   // Timewalk parameters
   bool apply_timewalk_;
