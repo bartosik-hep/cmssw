@@ -25,6 +25,22 @@
 using namespace std;
 using namespace trklet;
 
+namespace {
+  // DEBUG (local only): replaces assert(std::abs(dphi) < 0.001) so every offending stub is logged.
+  void logPhiApproxMismatch(const string& name, const Stub* fpgastub, const L1TStub* stub, double phimin, double dphi) {
+    edm::LogError("MatchProcessorDphi")
+        << name << " dphi=" << dphi << " detId=" << stub->detId() << " layerdisk=" << stub->layerdisk()
+        << " tilted=" << stub->isTilted() << " tiltedRing=" << stub->tiltedRingId()
+        << " endcapRing=" << stub->endcapRingId() << " PS=" << stub->isPSmodule() << " flipped=" << stub->isFlipped()
+        << " strip=" << stub->strip() << " bend=" << stub->bend() << " DTClink=" << stub->DTClink()
+        << " region=" << stub->region() << " r=" << stub->r() << " z=" << stub->z() << " phi=" << stub->phi()
+        << " rapprox=" << fpgastub->rapprox() << " zapprox=" << fpgastub->zapprox()
+        << " phiapprox=" << fpgastub->phiapprox(phimin, 0.0) << " phimin=" << phimin
+        << " iphi=" << fpgastub->phi().value() << " nbitsphi=" << fpgastub->phi().nbits()
+        << " stubword=" << stub->stubword();
+  }
+}  // namespace
+
 MatchProcessor::MatchProcessor(string name, Settings const& settings, Globals* global)
     : ProcessBase(name, settings, global),
       phimatchcuttable_(settings),
@@ -516,7 +532,8 @@ bool MatchProcessor::matchCalculator(Tracklet* tracklet, const Stub* fpgastub, b
 
     if (settings_.useapprox()) {
       double dphi = reco::reducePhiRange(phi - fpgastub->phiapprox(phimin_, 0.0));
-      assert(std::abs(dphi) < 0.001);
+      if (std::abs(dphi) >= 0.001)
+        logPhiApproxMismatch(getName(), fpgastub, stub, phimin_, dphi);
       phi = fpgastub->phiapprox(phimin_, 0.0);
       z = fpgastub->zapprox();
       r = fpgastub->rapprox();
@@ -690,7 +707,8 @@ bool MatchProcessor::matchCalculator(Tracklet* tracklet, const Stub* fpgastub, b
 
     if (settings_.useapprox()) {
       double dphi = reco::reducePhiRange(phi - fpgastub->phiapprox(phimin_, 0.0));
-      assert(std::abs(dphi) < 0.001);
+      if (std::abs(dphi) >= 0.001)
+        logPhiApproxMismatch(getName(), fpgastub, stub, phimin_, dphi);
       phi = fpgastub->phiapprox(phimin_, 0.0);
       z = fpgastub->zapprox();
       r = fpgastub->rapprox();
